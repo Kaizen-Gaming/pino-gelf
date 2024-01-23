@@ -137,6 +137,7 @@ dist
 
 # editor files
 .vscode
+.vs
 .idea
 
 # lock files

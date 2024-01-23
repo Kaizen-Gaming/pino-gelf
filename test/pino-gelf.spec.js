@@ -21,6 +21,17 @@ function testPinoToSyslogLevel(pinoLevel, syslogLevel, testCallback) {
 }
 
 describe('pinoGelf', function() {
+
+  test('AMQP protocol is used with appropriate parame', done => {
+    const pg = cp.spawn('node', [pgPath, 'log', '-h', 'localhost', '-p', '5672', '-P', 'amqp', '-user', 'testuser', '-pass', 'testpass123'])
+    pg.on('close', (code) => {
+      expect(code).toEqual(0);
+      done();
+    });
+    
+    pg.stdin.end(pinoOutput('hello world', 30) + '\n');
+  })
+
   test('UDP protocol is used with appropriate param', done => {
     const pg = cp.spawn('node', [pgPath, 'log', '-v', '-P', 'udp']);
     

@@ -1,55 +1,34 @@
-#! /usr/bin/env node
-
 'use strict';
 
-const program = require('commander');
-const version = require('./package.json').version;
-const pinoGelf = require('./lib/pino-gelf');
+const build = require('pino-abstract-transport')
+const transformer = require('./lib/transformer');
+const transporter = require('./lib/transports')
 
-program
-  .version(version);
+const defaultOpts = {
+  customKeys: [],
+  host: '127.0.0.1',
+  protocol: 'amqp',
+  maxChunkSize: 1420,
+  keepAlive: true,
+  reconnectionLimit: -1,
+  reconnectionDelay: 1000,
+  port: 5672,
+  username: "guest",
+  password: "guest",
+  exchange: "logging.gelf",
+  exchangeType: "fanout",
+  routeKey: ""
+};
 
-program
-  .command('log')
-  .description('Run Pino-GELF')
-  .option('-h, --host [host]', 'Graylog Host')
-  .option('-p, --port [port]', 'Graylog Port', parseInt)
-  .option('-P, --protocol [protocol]', 'Graylog protocol (UDP, HTTP, HTTPS, TCP, TLS)')
-  .option('-m, --max-chunk-size [maxChunkSize]', 'Graylog UDP Input Maximum Chunk Size', parseInt)
-  .option('-k, --keep-alive [keepAlive]', 'HTTP/TCP keep alive')
-  .option('-r, --reconnection-limit [reconnectionLimit]', 'TCP reconnection limit', parseInt)
-  .option('-d, --reconnection-delay [reconnectionDelay]', 'TCP reconnection delay', parseInt)
-  .option('-v, --verbose', 'Output GELF to console')
-  .option('-t, --passthrough', 'Output original input to stdout to allow command chaining')
-  .action(function () {
-    const options = this.opts();
+module.exports = function (opts) {
+  opts = Object.assign({}, defaultOpts, opts)
+  const transform = transformer(opts);
+  const transport = transporter(opts)
 
-    const opts = {
-      customKeys: options.specifyCustomFields || [],
-      host: options.host || '127.0.0.1',
-      protocol: (options.protocol && options.protocol.toLowerCase()) || 'udp',
-      maxChunkSize: options.maxChunkSize || 1420,
-      keepAlive: options.keepAlive != null ? options.keepAlive.toLowerCase() !== 'false' : true,
-      reconnectionLimit: options.reconnectionLimit || -1,
-      reconnectionDelay: options.reconnectionDelay || 1000,
-      port: options.port || 12201,
-      verbose: (options.verbose && !options.passthrough) || false,
-      passthrough: options.passthrough || false
-    };
-
-    switch(opts.protocol) {
-    case 'udp':
-    case 'http':
-    case 'https':
-    case 'tcp':
-    case 'tls':
-      break;
-    default:
-      throw new Error('Unsupported protocol ' + opts.protocol);
-    } 
-
-    pinoGelf(opts);
-  });
-
-program
-  .parse(process.argv);
+  return build(function (source) {
+    source.on('data', function (data) {
+      const message = transform(data)
+      transport.emit('log', message);
+    })
+  })
+}
