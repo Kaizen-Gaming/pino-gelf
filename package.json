@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/pinojs/pino-gelf#readme",
   "dependencies": {
-    "amqplib": "^0.10.3",
+    "amqplib": "^0.10.7",
     "fast-json-stringify": "^1.15.2",
     "lodash": "^4.17.21",
     "pino-abstract-transport": "^1.1.0",
